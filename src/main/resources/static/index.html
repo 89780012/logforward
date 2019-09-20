@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Spring Boot WebSocket+广播式</title>
+</head>
+<body>
+<noscript>
+    <h2 style="color:#ff0000">貌似你的浏览器不支持websocket</h2>
+</noscript>
+<div>
+    <div>
+        <label>输入你的名字</label> <input type="text" id="name" value="1234" />
+        <button id="connect" onclick="connect()">连接</button>
+        <button id="disconnect"  onclick="disconnect();">断开连接</button>
+    </div>
+    <div id="conversationDiv">
+        <!--<p id="response" style="width"></p>-->
+        <table id="response" style="width: 1500px; border: 1px solid #100f0f">
+            <tr>
+                <td>token</td>
+                <td>type</td>  <!-- 显示md td 或者strategy -->
+                <td>strategy_name</td>  <!-- 如果strategy ,则显示strategy 名称 -->
+                <td>create_time</td>
+                <td>state</td>
+                <td>content</td>
+                <td>logpath</td>
+            </tr>
+
+        </table>
+    </div>
+</div>
+<script src="https://cdn.bootcss.com/sockjs-client/1.1.4/sockjs.min.js"></script>
+<script src="https://cdn.bootcss.com/stomp.js/2.3.3/stomp.min.js"></script>
+<script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<script type="text/javascript">
+    var stompClient = null;
+    //gateway网关的地址
+    var host="http://127.0.0.1:8080";
+
+    function setConnected(connected) {
+        document.getElementById('connect').disabled = connected;
+        document.getElementById('disconnect').disabled = !connected;
+    }
+
+    function connect() {
+        //地址+端点路径，构建websocket链接地址,注意，对应config配置里的addEndpoint
+        var socket = new SockJS(host+'/endpoint-websocket' + '?token='+ $('#name').val());
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            setConnected(true);
+            //监听的路径以及回调
+            stompClient.subscribe('/queue'+ "/1234", function(response) {
+                var obj = JSON.parse(response.body);
+                showResponse(obj);
+            });
+        });
+        $("button[i]")
+    }
+    function disconnect() {
+        if (stompClient != null) {
+            setConnected(false);
+            stompClient.disconnect();
+        }
+        console.log("Disconnected");
+    }
+
+    var template = "<tr><td>#token#</td><td>#type#</td><td>#strategy_name#</td>" +
+        "<td>#create_time#</td><td>#state#</td><td>#content#</td><td>#logpath#</td></tr>"
+    function showResponse(message) {
+        _template = template.replace("#token#",message.token).replace("#type#",message.type)
+            .replace("#strategy_name#",message.strategy_name).replace("#create_time#",message.create_time)
+            .replace("#state#",message.state).replace("#content#",message.content).replace("#logpath#",message.logpath);
+        $("#response").append(_template);
+    }
+</script>
+</body>
+</html>
